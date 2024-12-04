@@ -10,17 +10,12 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: path.resolve(__dirname, "index.html"),
-        content: path.resolve(__dirname, "src/content.tsx"),
         background: path.resolve(__dirname, "src/background.ts")
       },
       output: {
         entryFileNames: (chunkInfo) => {
           // Ensure content and background scripts are named correctly
-          return chunkInfo.name === "content"
-            ? "content.js"
-            : chunkInfo.name === "background"
-              ? "background.js"
-              : "[name].js"
+          return chunkInfo.name === "background" ? "background.js" : "[name].js"
         },
         chunkFileNames: "[name].js",
         assetFileNames: "[name].[ext]"
@@ -28,7 +23,7 @@ export default defineConfig({
     },
     outDir: "dist",
     emptyOutDir: true,
-    target: "chrome89" // Specify Chrome target for better compatibility
+    target: "chrome130" // Specify Chrome target for better compatibility
   },
   resolve: {
     alias: {
