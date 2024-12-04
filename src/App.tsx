@@ -1,16 +1,70 @@
-import { Suspense, useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { lazy, Suspense, useEffect, useState } from "react"
+import { UAParser } from "ua-parser-js"
+
+const { browser } = UAParser(navigator.userAgent)
+const NotSupported = lazy(() =>
+  import("./containers/not-supported").then((module) => ({
+    default: module.NotSupported
+  }))
+)
+const NotEnable = lazy(() =>
+  import("./containers/not-enabled").then((module) => ({
+    default: module.NotEnable
+  }))
+)
 
 function App() {
-  const [selectedText, setSelectedText] = useState<string>("")
-  const [summary, setSummary] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  // @ts-expect-error new chrome feature
+  const [enabled] = useState("ai" in self && "summarizer" in self.ai)
+  const [downloadprogress, setDownloadprogress] = useState<string>("")
+  const [summary, setSummary] = useState<string>("")
+  const [error, setError] = useState<string>("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [support] = useState(Number(browser.major) > 130)
+  const [available, setAvailable] = useState<boolean>(false)
+
+  useEffect(() => {
+    // @ts-expect-error new chrome feature
+    self.ai.summarizer
+      .capabilities()
+      .then((d: { available: "readily" | "no" | string }) =>
+        setAvailable(d.available === "readily")
+      )
+  }, [])
 
   useEffect(() => {
     // Listen for messages from content script
-    const handleMessage = (request: any) => {
-      if (request.type === "SELECTED_TEXT") {
-        setSelectedText(request.text)
+    const handleMessage = async (request: {
+      type: string
+      text?: string
+      chunk?: string
+      isFirst?: boolean
+      total?: number
+      loaded?: number
+      error?: string
+    }) => {
+      console.log({ request })
+      switch (request.type) {
+        case "AI_INITIATE":
+          setIsLoading(true)
+          setDownloadprogress(`${request.loaded}/${request.total}`)
+          break
+        case "ERROR":
+          setError(request?.error ?? "")
+          break
+        case "STREAM_RESPONSE":
+          setDownloadprogress("")
+          setIsLoading(true)
+          setError("")
+          if (request.isFirst) {
+            setSummary(request.chunk!)
+          } else {
+            setSummary((prev) => prev + request.chunk)
+          }
+          break
+        default:
+          setIsLoading(false)
+          setError("")
       }
     }
 
@@ -20,61 +74,40 @@ function App() {
     }
   }, [])
 
-  const handleSummarize = async () => {
-    if (!selectedText) return
-
-    setIsLoading(true)
-    try {
-      const summaryResponse = await chrome.runtime.sendMessage({
-        type: "SUMMARIZE",
-        text: selectedText
-      })
-      setSummary(summaryResponse)
-    } catch (error) {
-      console.error("Summarization failed:", error)
-      setSummary("Failed to generate summary")
-    } finally {
-      setIsLoading(false)
-    }
+  if (!enabled || !available) {
+    return <NotEnable />
   }
-
-  const handleClear = () => {
-    setSelectedText("")
-    setSummary(null)
+  if (!support) {
+    return <NotSupported />
   }
-
   return (
     <Suspense>
-      <div className="p-4 max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-4">AI Summarizer</h1>
-
-        {selectedText && (
-          <div className="mb-4">
-            <h2 className="font-semibold">Selected Text:</h2>
-            <p className="text-sm text-gray-600 mb-2">{selectedText}</p>
-          </div>
-        )}
-
+      <div className="p-4 max-w-md mx-auto space-y-4">
         <div className="space-y-2">
-          <Button
-            onClick={handleSummarize}
-            disabled={!selectedText || isLoading}
-            className="w-full"
-          >
-            {isLoading ? "Summarizing..." : "Generate Summary"}
-          </Button>
-
-          {selectedText && (
-            <Button onClick={handleClear} variant="outline" className="w-full">
-              Clear Selection
-            </Button>
+          <p className="text-xs text-foreground/70">
+            Highlight the text you want to summarize, right click and select "⚡
+            Summarize Selected Text"
+          </p>
+          {downloadprogress && (
+            <div className="rounded-md text-sm">Downloading Summarizer..</div>
+          )}
+          {isLoading && (
+            <div className="border rounded-md animate-pulse p-4">
+              Generating summary...
+            </div>
+          )}
+          {summary && (
+            <div className="mt-4 p-3 border rounded">
+              <h2 className="font-semibold mb-2">Summary:</h2>
+              <div dangerouslySetInnerHTML={{ __html: summary }} />
+            </div>
           )}
         </div>
 
-        {summary && (
-          <div className="mt-4 p-3 bg-gray-100 rounded">
-            <h2 className="font-semibold mb-2">Summary:</h2>
-            <p className="text-sm">{summary}</p>
+        {error && (
+          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">
+            <h2 className="font-semibold mb-2">Error:</h2>
+            <p className="text-sm">{error}</p>
           </div>
         )}
       </div>

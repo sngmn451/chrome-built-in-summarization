@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "Build In Summarization",
+  "name": "Built-In Summarization",
   "version": "0.0.1",
   "description": "AI-powered text summarization Chrome extension",
   "permissions": [
-    "activeTab", 
-    "contextMenus", 
-    "storage", 
+    "activeTab",
+    "contextMenus",
+    "storage",
     "scripting",
     "sidePanel"
   ],
@@ -22,7 +22,7 @@
   "action": {
     "default_icon": {
       "16": "icon16.png",
-      "48": "icon48.png", 
+      "48": "icon48.png",
       "128": "icon128.png"
     }
   },
@@ -30,20 +30,8 @@
     "default_path": "index.html"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
-      "run_at": "document_idle",
-      "all_frames": false
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["index.css"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "trial_tokens": ["AlS5tnraWHj+vugqDla8C5MEgrqu9WvlWyoEOxFKWzk9/+nm2kRHU7bRtG/t6P7jrxKWgNYNlKwmixjw87xO5gAAAABzeyJvcmlnaW4iOiJjaHJvbWUtZXh0ZW5zaW9uOi8vam5raW1oZGZjb21saGNob2JoYmNqbWJmZmFhZ2pkZm0iLCJmZWF0dXJlIjoiQUlTdW1tYXJpemF0aW9uQVBJIiwiZXhwaXJ5IjoxNzUzMTQyNDAwfQ=="]
 }
